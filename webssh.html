@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- RFRS LXC BOT 1.0 PRO | WebSSH -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RFRS LXC BOT 1.0 PRO • WebSSH</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<style>
+  :root { --bg:#0b0b14; --card:#12121f; --line:#262640; --text:#e8e8f5; --mute:#8a8aa8; --accent:#7c3aed; --ok:#22c55e; --bad:#ef4444; }
+  * { box-sizing:border-box; margin:0; }
+  html,body { height:100%; background:radial-gradient(1200px 600px at 10% -10%, #1d1240 0%, var(--bg) 60%); color:var(--text); font-family:Inter,system-ui,sans-serif; }
+  body { display:flex; flex-direction:column; padding:14px; gap:12px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; background:var(--card); border:1px solid var(--line); border-radius:14px; }
+  .brand { font-weight:700; letter-spacing:.3px; background:linear-gradient(90deg,#a78bfa,#38bdf8); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .brand small { color:var(--mute); -webkit-text-fill-color:var(--mute); font-weight:500; margin-left:8px; }
+  .right { display:flex; align-items:center; gap:10px; }
+  .pill { display:flex; align-items:center; gap:6px; font-size:12px; padding:5px 10px; border-radius:99px; border:1px solid var(--line); color:var(--mute); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--mute); }
+  .pill.on .dot { background:var(--ok); box-shadow:0 0 8px var(--ok); } .pill.on { color:var(--ok); }
+  .pill.off .dot { background:var(--bad); } .pill.off { color:var(--bad); }
+  button { background:var(--accent); color:#fff; border:0; padding:7px 14px; border-radius:10px; font-weight:600; cursor:pointer; transition:.15s; }
+  button:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  #wrap { flex:1; min-height:0; background:#0d0d17; border:1px solid var(--line); border-radius:14px; padding:10px; box-shadow:0 10px 40px rgba(124,58,237,.12); }
+  #term { height:100%; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f4f4fb; --card:#fff; --line:#dcdcf0; --text:#1b1b2e; --mute:#6b6b88; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">RFRS LXC BOT 1.0 PRO<small>WebSSH</small></div>
+  <div class="right">
+    <div id="st" class="pill"><span class="dot"></span><span id="stx">connecting</span></div>
+    <button id="rc">Reconnect</button>
+  </div>
+</header>
+<div id="wrap"><div id="term"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script>
+const token = new URLSearchParams(location.search).get("token");
+const term = new Terminal({ cursorBlink:true, fontSize:14, fontFamily:"JetBrains Mono, Menlo, Consolas, monospace",
+  theme:{ background:"#0d0d17", foreground:"#e8e8f5", cursor:"#a78bfa", selectionBackground:"#7c3aed55" } });
+const fit = new FitAddon.FitAddon();
+term.loadAddon(fit); term.open(document.getElementById("term")); fit.fit();
+let ws;
+const setSt = (c, t) => { document.getElementById("st").className = "pill " + c; document.getElementById("stx").textContent = t; };
+const send = o => ws && ws.readyState === 1 && ws.send(JSON.stringify(o));
+
+function connect() {
+  setSt("", "connecting");
+  ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws?token=" + encodeURIComponent(token));
+  ws.binaryType = "arraybuffer";
+  ws.onopen = () => { setSt("on", "connected"); term.reset(); fit.fit(); send({ t:"r", rows:term.rows, cols:term.cols }); term.focus(); };
+  ws.onmessage = e => term.write(new Uint8Array(e.data));
+  ws.onclose = () => { setSt("off", "disconnected"); term.write("\r\n\x1b[31m[session closed]\x1b[0m\r\n"); };
+}
+term.onData(d => send({ t:"i", d }));
+term.onResize(({ rows, cols }) => send({ t:"r", rows, cols }));
+window.addEventListener("resize", () => fit.fit());
+document.getElementById("rc").onclick = () => { if (ws) ws.close(); connect(); };
+connect();
+</script>
+</body>
+</html>
