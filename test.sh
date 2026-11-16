@@ -7,11 +7,9 @@
 #   ██║  ██║╚██████╔╝╚██████╔╝   ██║   ██║     ██║  ██║██║  ██║██║██║ ╚═╝ ██║
 #   ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝
 # ═══════════════════════════════════════════════════════════════════
-#   RFRS BOT INSTALLER v1.1  |  Powered by ROOTFAHIM
+#   RFRS BOT INSTALLER v1.2  |  Powered by ROOTFAHIM
 #   GitHub : https://github.com/RootFahim/Vps-Deployer-bot
 # ═══════════════════════════════════════════════════════════════════
-
-set -e
 
 # ───────────── Colors ─────────────
 RED='\033[1;31m'
@@ -69,11 +67,14 @@ error()   { echo -e "${RED}  ❌ $1${NC}"; }
 
 run_with_spinner() {
     local msg="$1"; shift
-    ("$@" > /tmp/rfrs_install.log 2>&1) &
+    # Fix: Use setsid to prevent killing the parent shell if it fails
+    ( "$@" > /tmp/rfrs_install.log 2>&1 ) &
     local pid=$!
+    
     spinner $pid "$msg"
     wait $pid
     local exit_code=$?
+    
     if [[ $exit_code -eq 0 ]]; then
         success "$msg — DONE"
     else
@@ -99,7 +100,7 @@ cat << 'EOF'
 EOF
 echo -e "${NC}"
 echo -e "${MAGENTA}  ═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${WHITE}       ⚡ RFRS LXC BOT INSTALLER  v1.1 PRO ⚡${NC}"
+echo -e "${WHITE}       ⚡ RFRS LXC BOT INSTALLER  v1.2 PRO ⚡${NC}"
 echo -e "${MAGENTA}  ═══════════════════════════════════════════════════════════════${NC}"
 echo -e "${YELLOW}      👑  Powered by ROOTFAHIM  |  Watermark: ROOTFAHIM  👑${NC}"
 echo -e "${MAGENTA}  ═══════════════════════════════════════════════════════════════${NC}"
@@ -154,13 +155,11 @@ section "STEP 4/6  •  Environment Configuration"
 
 ENV_FILE=".env"
 
-# Seed from test.env if it exists, else build fresh from template
 if [[ -f "test.env" && ! -f "$ENV_FILE" ]]; then
     cp test.env "$ENV_FILE"
     success "Seeded .env from test.env"
 fi
 
-# If .env still missing, write full template matching REAL project structure
 if [[ ! -f "$ENV_FILE" ]]; then
     cat > "$ENV_FILE" << 'EOF'
 # ===== RFRS LXC BOT 1.0 PRO - .env =====
@@ -188,7 +187,6 @@ EOF
     success "Created fresh .env with default template"
 fi
 
-# ───────── Env-var helper functions ─────────
 set_env_var() {
     local key="$1"
     local value="$2"
@@ -231,21 +229,21 @@ prompt_var() {
         fi
     fi
 
+    # Fix: Removed echo -e from prompt to avoid -p conflicts
     local prompt_msg
     if [[ -n "$current" ]]; then
-        prompt_msg=$(echo -e "     ${GREEN}${var}=${NC} ${BLUE}[Enter to keep]${NC} ")
+        prompt_msg="${GREEN}     ${var}=${NC} ${BLUE}[Enter to keep]${NC} "
     else
-        prompt_msg=$(echo -e "     ${GREEN}${var}=${NC} ")
+        prompt_msg="${GREEN}     ${var}=${NC} "
     fi
 
     if [[ "$secret" == "secret" ]]; then
-        read -rsp "$prompt_msg" input
+        read -rsp "$(echo -e "$prompt_msg")" input
         echo ""
     else
-        read -rp "$prompt_msg" input
+        read -rp "$(echo -e "$prompt_msg")" input
     fi
 
-    # Enter with no input
     if [[ -z "$input" ]]; then
         if [[ -z "$current" && "$required" == "required" ]]; then
             error "${var} is required — cannot be empty!"
@@ -260,7 +258,6 @@ prompt_var() {
         return
     fi
 
-    # Optional validation
     if [[ -n "$validate" ]] && ! eval "$validate \"\$input\""; then
         error "Invalid value for ${var} — try again"
         prompt_var "$var" "$desc" "$secret" "$required" "$validate"
@@ -271,12 +268,10 @@ prompt_var() {
     success "${var} saved"
 }
 
-# Validation helpers
 is_number() { [[ "$1" =~ ^[0-9]+$ ]]; }
 is_url()    { [[ "$1" =~ ^https?://.+ ]]; }
 is_digits() { [[ "$1" =~ ^[0-9,]+$ ]]; }
 
-# ───────── DISCORD BOT SECTION ─────────
 echo ""
 echo -e "${MAGENTA}  ╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${MAGENTA}  ║${CYAN}   🤖  DISCORD BOT CONFIGURATION${NC}"
@@ -311,14 +306,13 @@ echo -e "${MAGENTA}  ╚══════════════════�
 prompt_var "WEB_PORT"    "WebSSH port (e.g. 8080)"                         normal   ""       "is_number"
 prompt_var "WEBSSH_URL"  "Public WebSSH URL (http://IP:PORT)"              normal   ""       "is_url"
 
-# ───────── Show sanitized result ─────────
 echo ""
 success "All .env variables configured"
 echo -e "${BLUE}  ─────────────────────────────────────────────────────────────${NC}"
 echo -e "${WHITE}  📄  Current .env (secrets hidden):${NC}"
 while IFS='=' read -r k v; do
     [[ -z "$k" || "$k" =~ ^# ]] && continue
-    k=$(echo "$k" | xargs)   # trim
+    k=$(echo "$k" | xargs)
     if [[ "$k" =~ (TOKEN|KEY|SECRET|PASSWORD) ]]; then
         echo -e "     ${GREEN}${k}${NC}=${YELLOW}$(printf '%*s' ${#v} '' | tr ' ' '*')${NC}"
     else
@@ -332,7 +326,6 @@ echo -e "${BLUE}  ────────────────────�
 # ═══════════════════════════════════════════════════════════════════
 section "STEP 5/6  •  Creating systemd Service"
 
-# Auto-detect bot entry file
 BOT_FILE=""
 for candidate in /root/Vps-Deployer-bot/bot.py /root/Vps-Deployer-bot/main.py /root/bot.py; do
     if [[ -f "$candidate" ]]; then BOT_FILE="$candidate"; break; fi
