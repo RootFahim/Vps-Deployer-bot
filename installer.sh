@@ -1,412 +1,339 @@
 #!/bin/bash
-# ═══════════════════════════════════════════════════════════════════
-#   ██████╗  ██████╗  ██████╗ ████████╗███████╗ █████╗ ██╗  ██╗██╗███╗   ███╗
-#   ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝██╔════╝██╔══██╗██║  ██║██║████╗ ████║
-#   ██████╔╝██║   ██║██║   ██║   ██║   █████╗  ███████║███████║██║██╔████╔██║
-#   ██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  ██╔══██║██╔══██║██║██║╚██╔╝██║
-#   ██║  ██║╚██████╔╝╚██████╔╝   ██║   ██║     ██║  ██║██║  ██║██║██║ ╚═╝ ██║
-#   ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝
-# ═══════════════════════════════════════════════════════════════════
-#   RFRS BOT INSTALLER v1.1  |  Powered by ROOTFAHIM
-#   GitHub : https://github.com/RootFahim/Vps-Deployer-bot
-# ═══════════════════════════════════════════════════════════════════
+
+# ============================================================
+#   ██████╗  ██████╗  ███████╗██████╗ ███████╗
+#   ██╔══██╗██╔═══██╗██╔════╝██╔══██╗██╔════╝
+#   ██████╔╝██║   ██║█████╗  ██████╔╝███████╗
+#   ██╔══██╗██║   ██║██╔══╝  ██╔══██╗╚════██║
+#   ██║  ██║╚██████╔╝██║     ██║  ██║███████║
+#   ╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝╚══════╝
+#
+#   RFRS LXC BOT 1.0 PRO — AUTO INSTALLER
+#   Watermark: ROOTFAHIM
+#   Repo: github.com/RootFahim/Vps-Deployer-bot
+# ============================================================
 
 set -e
 
-# ───────────── Colors ─────────────
-RED='\033[1;31m'
-GREEN='\033[1;32m'
+# ---------- COLORS ----------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[1;34m'
-MAGENTA='\033[1;35m'
-CYAN='\033[1;36m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
 WHITE='\033[1;37m'
+BOLD='\033[1m'
+DIM='\033[2m'
 NC='\033[0m'
 
-# ───────────── Root Check ─────────────
-if [[ $EUID -ne 0 ]]; then
-    echo -e "${RED}❌ Ye script root ke tor par chalana zaruri hai!${NC}"
-    echo -e "${YELLOW}Try: sudo bash installer.sh${NC}"
+# ---------- WATERMARK ----------
+WM="${MAGENTA}${BOLD}[ ROOTFAHIM ]${NC}"
+
+# ---------- HELPERS ----------
+log()     { echo -e "${WM} ${CYAN}➜${NC} $1"; }
+ok()      { echo -e "${WM} ${GREEN}✔${NC} $1"; }
+warn()    { echo -e "${WM} ${YELLOW}⚠${NC} $1"; }
+err()     { echo -e "${WM} ${RED}✘${NC} $1"; }
+step()    { echo -e "\n${WM} ${BLUE}${BOLD}▶ $1${NC}\n"; }
+
+# ---------- SPINNER ----------
+spinner() {
+    local pid=$1 msg="$2"
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏' i=0
+    while kill -0 "$pid" 2>/dev/null; do
+        i=$(( (i+1) % 10 ))
+        printf "\r${WM} ${CYAN}${spin:$i:1}${NC} %s" "$msg"
+        sleep 0.08
+    done
+    printf "\r${WM} ${GREEN}✔${NC} %s\n" "$msg"
+}
+
+# ---------- TYPEWRITER ----------
+typewriter() {
+    local text="$1" delay="${2:-0.015}"
+    for (( i=0; i<${#text}; i++ )); do
+        printf "%s" "${text:$i:1}"
+        sleep "$delay"
+    done
+    echo
+}
+
+# ---------- PROGRESS BAR ----------
+progress_bar() {
+    local total=50 text="$1"
+    printf "\n${WM} ${BOLD}%s${NC}\n" "$text"
+    for (( i=0; i<=total; i++ )); do
+        local pct=$(( i * 100 / total ))
+        local filled=$(( i * 40 / total ))
+        local empty=$(( 40 - filled ))
+        local bar=""
+        for (( j=0; j<filled; j++ )); do bar+="█"; done
+        for (( j=0; j<empty; j++ ));  do bar+="░"; done
+        printf "\r  ${GREEN}${bar}${NC} ${YELLOW}%3d%%${NC}" "$pct"
+        sleep 0.02
+    done
+    echo -e "  ${GREEN}DONE${NC}"
+}
+
+# ---------- BANNER ----------
+show_banner() {
+    clear
+    echo -e "${MAGENTA}${BOLD}"
+    cat << "EOF"
+   ██████╗  ██████╗  ███████╗██████╗ ███████╗
+   ██╔══██╗██╔═══██╗██╔════╝██╔══██╗██╔════╝
+   ██████╔╝██║   ██║█████╗  ██████╔╝███████╗
+   ██╔══██╗██║   ██║██╔══╝  ██╔══██╗╚════██║
+   ██║  ██║╚██████╔╝██║     ██║  ██║███████║
+   ╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝╚══════╝
+EOF
+    echo -e "${NC}"
+    echo -e "${CYAN}${BOLD}   ╔══════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}${BOLD}   ║${WHITE}    RFRS LXC BOT 1.0 PRO — AUTO INSTALLER   ${CYAN}║${NC}"
+    echo -e "${CYAN}${BOLD}   ║${MAGENTA}          Watermark: ROOTFAHIM               ${CYAN}║${NC}"
+    echo -e "${CYAN}${BOLD}   ╚══════════════════════════════════════════════╝${NC}"
+    echo
+}
+
+# ---------- ROOT CHECK ----------
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        err "Must run as root!"
+        echo -e "${WM} ${YELLOW}Try: sudo bash $0${NC}"
+        exit 1
+    fi
+}
+
+# ---------- .env WRITER ----------
+set_env() {
+    local key="$1" value="$2"
+    # remove existing line, then append
+    sed -i "/^${key}=/d" .env 2>/dev/null || true
+    echo "${key}=${value}" >> .env
+}
+
+# ---------- PROMPT .env VALUE ----------
+prompt_env() {
+    local key="$1" desc="$2" default="$3" secret="$4"
+    local value=""
+
+    echo
+    echo -e "${WM} ${BLUE}${BOLD}${key}${NC}"
+    echo -e "   ${DIM}${desc}${NC}"
+    [[ -n "$default" ]] && echo -e "   ${DIM}Default: ${default}${NC}"
+
+    if [[ "$secret" == "yes" ]]; then
+        read -rsp "   ${CYAN}➜ ${key}=${NC}" value
+        echo
+    else
+        if [[ -n "$default" ]]; then
+            read -rp "   ${CYAN}➜ ${key} [${default}]:${NC} " value
+        else
+            read -rp "   ${CYAN}➜ ${key}=${NC}" value
+        fi
+    fi
+
+    [[ -z "$value" ]] && value="$default"
+
+    if [[ -z "$value" ]]; then
+        warn "Empty value for ${key} — skipped."
+        return
+    fi
+
+    set_env "$key" "$value"
+    ok "${key} saved"
+}
+
+# ============================================================
+#   MAIN
+# ============================================================
+show_banner
+check_root
+
+typewriter "  Starting installation of RFRS LXC BOT 1.0 PRO ..." 0.01
+echo
+
+# ---------- STEP 1: SYSTEM UPDATE ----------
+step "STEP 1/8 : Updating system packages"
+(apt-get update -y >/dev/null 2>&1) &
+spinner $! "Updating apt repositories"
+
+# ---------- STEP 2: INSTALL DEPS ----------
+step "STEP 2/8 : Installing Git & Python3-Pip"
+(apt-get install -y git python3-pip python3-venv >/dev/null 2>&1) &
+spinner $! "Installing git, python3-pip, venv"
+
+# ---------- STEP 3: CLONE REPO ----------
+step "STEP 3/8 : Cloning repository"
+cd /root
+if [[ -d "Vps-Deployer-bot/.git" ]]; then
+    warn "Repo already exists — pulling latest..."
+    (cd Vps-Deployer-bot && git pull >/dev/null 2>&1) &
+    spinner $! "git pull origin main"
+else
+    rm -rf Vps-Deployer-bot
+    (git clone https://github.com/RootFahim/Vps-Deployer-bot >/dev/null 2>&1) &
+    spinner $! "Cloning RootFahim/Vps-Deployer-bot"
+fi
+cd Vps-Deployer-bot
+ok "Repository ready: $(pwd)"
+
+# ---------- STEP 4: REQUIREMENTS ----------
+step "STEP 4/8 : Installing Python requirements"
+(pip3 install --break-system-packages -r requirements.txt >/dev/null 2>&1) &
+spinner $! "pip install -r requirements.txt"
+ok "Python dependencies installed"
+
+# ---------- STEP 5: .ENV SETUP ----------
+step "STEP 5/8 : Configuring .env file"
+
+if [[ ! -f test.env ]]; then
+    err "test.env template not found inside repo!"
     exit 1
 fi
 
-# ───────────── Helper Functions ─────────────
-spinner() {
-    local pid=$1
-    local delay=0.1
-    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-    while ps -p $pid > /dev/null 2>&1; do
-        local temp=${spinstr#?}
-        printf " ${CYAN}[%c]${NC}  ${WHITE}%s${NC}" "$spinstr" "$2"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-        printf "\r"
-    done
-    printf "\r\033[K"
-}
+cp test.env .env
+ok ".env file created from test.env template"
 
-type_text() {
-    local text="$1"
-    local color="${2:-$WHITE}"
-    for ((i=0; i<${#text}; i++)); do
-        printf "${color}%s${NC}" "${text:$i:1}"
-        sleep 0.015
-    done
-    echo ""
-}
+echo
+echo -e "${WM} ${YELLOW}${BOLD}Fill in your configuration below.${NC}"
+echo -e "${WM} ${DIM}Press ENTER to accept the default value shown in [brackets].${NC}"
 
-section() {
-    echo ""
-    echo -e "${MAGENTA}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${MAGENTA}║${CYAN}  $1${NC}"
-    echo -e "${MAGENTA}╚══════════════════════════════════════════════════════════════╝${NC}"
-}
+# ===== REQUIRED =====
+prompt_env "DISCORD_TOKEN" \
+    "Bot token (Discord Dev Portal → Bot → Reset Token)" \
+    "" "yes"
 
-success() { echo -e "${GREEN}  ✅ $1${NC}"; }
-info()    { echo -e "${CYAN}  ℹ️  $1${NC}"; }
-warn()    { echo -e "${YELLOW}  ⚠️  $1${NC}"; }
-error()   { echo -e "${RED}  ❌ $1${NC}"; }
+prompt_env "ADMIN_IDS" \
+    "Admin Discord user IDs (comma-separated, e.g. 123,456)" \
+    "" "no"
 
-run_with_spinner() {
-    local msg="$1"; shift
-    ("$@" > /tmp/rfrs_install.log 2>&1) &
-    local pid=$!
-    spinner $pid "$msg"
-    wait $pid
-    local exit_code=$?
-    if [[ $exit_code -eq 0 ]]; then
-        success "$msg — DONE"
-    else
-        error "$msg — FAILED"
-        echo -e "${RED}Last 20 lines of log:${NC}"
-        tail -n 20 /tmp/rfrs_install.log
-        exit $exit_code
-    fi
-}
+# ===== BASIC =====
+prompt_env "PREFIX" \
+    "Command prefix" \
+    "!" "no"
 
-# ═══════════════════════════════════════════════════════════════════
-#                      BANNER + INTRO ANIMATION
-# ═══════════════════════════════════════════════════════════════════
-clear
-echo -e "${CYAN}"
-cat << 'EOF'
-   ██████╗  ██████╗  ██████╗ ████████╗███████╗ █████╗ ██╗  ██╗██╗███╗   ███╗
-   ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝██╔════╝██╔══██╗██║  ██║██║████╗ ████║
-   ██████╔╝██║   ██║██║   ██║   ██║   █████╗  ███████║███████║██║██╔████╔██║
-   ██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  ██╔══██║██╔══██║██║██║╚██╔╝██║
-   ██║  ██║╚██████╔╝╚██████╔╝   ██║   ██║     ██║  ██║██║  ██║██║██║ ╚═╝ ██║
-   ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝
-EOF
-echo -e "${NC}"
-echo -e "${MAGENTA}  ═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${WHITE}       ⚡ RFRS LXC BOT INSTALLER  v1.1 PRO ⚡${NC}"
-echo -e "${MAGENTA}  ═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}      👑  Powered by ROOTFAHIM  |  Watermark: ROOTFAHIM  👑${NC}"
-echo -e "${MAGENTA}  ═══════════════════════════════════════════════════════════════${NC}"
-echo ""
-type_text "  🚀 Initializing installation sequence..." "$CYAN"
-sleep 0.3
-type_text "  🔧 Preparing environment..." "$CYAN"
-sleep 0.3
-type_text "  💎 Loading modules..." "$CYAN"
-sleep 0.2
-echo ""
+prompt_env "BOT_NAME" \
+    "Display name of the bot" \
+    "RFRS LXC BOT 1.0 PRO" "no"
 
-# ═══════════════════════════════════════════════════════════════════
-#                        STEP 1 : APT UPDATE
-# ═══════════════════════════════════════════════════════════════════
-section "STEP 1/6  •  System Update & Dependencies"
-info "Updating apt packages (this may take a moment)..."
-run_with_spinner "Updating apt package list" apt-get update -y
-run_with_spinner "Installing git"               apt-get install -y git
-run_with_spinner "Installing python3-pip"       apt-get install -y python3-pip
-run_with_spinner "Installing python3-venv"      apt-get install -y python3-venv
+# ===== VPS DEFAULTS =====
+prompt_env "DEFAULT_RAM_GB" \
+    "Default VPS RAM in GB (1 = 1024 MB)" \
+    "1" "no"
 
-# ═══════════════════════════════════════════════════════════════════
-#                   STEP 2 : CLONE REPO
-# ═══════════════════════════════════════════════════════════════════
-section "STEP 2/6  •  Cloning Repository"
-cd /root
+prompt_env "DEFAULT_CPU" \
+    "Default VPS CPU cores" \
+    "1" "no"
 
-if [[ -d "/root/Vps-Deployer-bot" ]]; then
-    warn "Repo already exists — removing old copy..."
-    rm -rf /root/Vps-Deployer-bot
-fi
+prompt_env "DEFAULT_DISK_GB" \
+    "Default VPS disk in GB" \
+    "10" "no"
 
-run_with_spinner "Cloning Vps-Deployer-bot" git clone https://github.com/RootFahim/Vps-Deployer-bot
-cd /root/Vps-Deployer-bot
-success "Repository cloned to /root/Vps-Deployer-bot"
+prompt_env "MAX_VPS_PER_USER" \
+    "Max VPS instances per user" \
+    "2" "no"
 
-# ═══════════════════════════════════════════════════════════════════
-#                   STEP 3 : PYTHON DEPENDENCIES
-# ═══════════════════════════════════════════════════════════════════
-section "STEP 3/6  •  Installing Python Dependencies"
-if [[ -f "requirements.txt" ]]; then
-    run_with_spinner "Installing Python requirements" pip install -r requirements.txt --break-system-packages
-else
-    warn "requirements.txt not found — skipping"
-fi
+# ===== WEBSSH =====
+prompt_env "WEB_PORT" \
+    "WebSSH listening port" \
+    "8080" "no"
 
-# ═══════════════════════════════════════════════════════════════════
-#                   STEP 4 : .ENV SETUP (INTERACTIVE)
-# ═══════════════════════════════════════════════════════════════════
-section "STEP 4/6  •  Environment Configuration"
+prompt_env "WEBSSH_URL" \
+    "WebSSH public URL (http:// or https://)" \
+    "http://$(hostname -I | awk '{print $1}'):8080" "no"
 
-ENV_FILE=".env"
+echo
+ok ".env file fully configured → $(pwd)/.env"
 
-# Seed from test.env if it exists, else build fresh from template
-if [[ -f "test.env" && ! -f "$ENV_FILE" ]]; then
-    cp test.env "$ENV_FILE"
-    success "Seeded .env from test.env"
-fi
+# ---------- STEP 6: SYSTEMD SERVICE ----------
+step "STEP 6/8 : Creating systemd service unit"
 
-# If .env still missing, write full template matching REAL project structure
-if [[ ! -f "$ENV_FILE" ]]; then
-    cat > "$ENV_FILE" << 'EOF'
-# ===== RFRS LXC BOT 1.0 PRO - .env =====
-
-# Bot token (Discord Developer Portal -> Bot -> Reset Token)
-DISCORD_TOKEN=your_bot_token_here
-
-# Admin Discord user IDs, comma separated
-ADMIN_IDS=123456789012345678
-
-# Command prefix and bot name
-PREFIX=!
-BOT_NAME=RFRS LXC BOT 1.0 PRO
-
-# Default VPS plan (RAM in GB: 1 = 1024 MB) and max VPS per user
-DEFAULT_RAM_GB=1
-DEFAULT_CPU=1
-DEFAULT_DISK_GB=10
-MAX_VPS_PER_USER=2
-
-# WebSSH: port + public link (http:// or https://)
-WEB_PORT=8080
-WEBSSH_URL=http://YOUR_SERVER_IP:8080
-EOF
-    success "Created fresh .env with default template"
-fi
-
-# ───────── Env-var helper functions ─────────
-set_env_var() {
-    local key="$1"
-    local value="$2"
-    local esc_val
-    esc_val=$(printf '%s' "$value" | sed 's/[\/&]/\\&/g')
-    if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
-        sed -i "s|^${key}=.*|${key}=${esc_val}|" "$ENV_FILE"
-    else
-        echo "${key}=${value}" >> "$ENV_FILE"
-    fi
-}
-
-get_env_var() {
-    grep "^${1}=" "$ENV_FILE" 2>/dev/null | head -n1 | cut -d'=' -f2-
-}
-
-prompt_var() {
-    local var="$1"
-    local desc="$2"
-    local secret="$3"
-    local required="$4"
-    local validate="$5"
-
-    local current
-    current=$(get_env_var "$var")
-    local input=""
-
-    echo ""
-    echo -e "${CYAN}  ─────────────────────────────────────────────────────────────${NC}"
-    echo -e "${WHITE}  ➤  ${var}${NC}  ${YELLOW}— ${desc}${NC}"
-    [[ "$required" == "required" ]] && echo -e "${RED}     * REQUIRED${NC}"
-
-    if [[ -n "$current" ]]; then
-        if [[ "$secret" == "secret" ]]; then
-            local masked
-            masked=$(printf '%*s' ${#current} '' | tr ' ' '*')
-            echo -e "${BLUE}     current : ${masked}${NC}"
-        else
-            echo -e "${BLUE}     current : ${current}${NC}"
-        fi
-    fi
-
-    local prompt_msg
-    if [[ -n "$current" ]]; then
-        prompt_msg=$(echo -e "     ${GREEN}${var}=${NC} ${BLUE}[Enter to keep]${NC} ")
-    else
-        prompt_msg=$(echo -e "     ${GREEN}${var}=${NC} ")
-    fi
-
-    if [[ "$secret" == "secret" ]]; then
-        read -rsp "$prompt_msg" input
-        echo ""
-    else
-        read -rp "$prompt_msg" input
-    fi
-
-    # Enter with no input
-    if [[ -z "$input" ]]; then
-        if [[ -z "$current" && "$required" == "required" ]]; then
-            error "${var} is required — cannot be empty!"
-            prompt_var "$var" "$desc" "$secret" "$required" "$validate"
-            return
-        fi
-        if [[ -z "$current" ]]; then
-            warn "${var} left as placeholder"
-        else
-            info "${var} kept existing value"
-        fi
-        return
-    fi
-
-    # Optional validation
-    if [[ -n "$validate" ]] && ! eval "$validate \"\$input\""; then
-        error "Invalid value for ${var} — try again"
-        prompt_var "$var" "$desc" "$secret" "$required" "$validate"
-        return
-    fi
-
-    set_env_var "$var" "$input"
-    success "${var} saved"
-}
-
-# Validation helpers
-is_number() { [[ "$1" =~ ^[0-9]+$ ]]; }
-is_url()    { [[ "$1" =~ ^https?://.+ ]]; }
-is_digits() { [[ "$1" =~ ^[0-9,]+$ ]]; }
-
-# ───────── DISCORD BOT SECTION ─────────
-echo ""
-echo -e "${MAGENTA}  ╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${MAGENTA}  ║${CYAN}   🤖  DISCORD BOT CONFIGURATION${NC}"
-echo -e "${MAGENTA}  ╚══════════════════════════════════════════════════════════════╝${NC}"
-
-prompt_var "DISCORD_TOKEN"  "Discord bot token (from Dev Portal)"           secret   required ""
-prompt_var "ADMIN_IDS"      "Admin Discord user IDs (comma-separated)"      normal   required "is_digits"
-
-echo ""
-echo -e "${MAGENTA}  ╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${MAGENTA}  ║${CYAN}   🎛️   BOT BEHAVIOUR${NC}"
-echo -e "${MAGENTA}  ╚══════════════════════════════════════════════════════════════╝${NC}"
-
-prompt_var "PREFIX"    "Command prefix (e.g. ! or .)"                     normal   ""       ""
-prompt_var "BOT_NAME"  "Display name shown in embeds"                       normal   ""       ""
-
-echo ""
-echo -e "${MAGENTA}  ╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${MAGENTA}  ║${CYAN}   🖥️   VPS PLAN DEFAULTS${NC}"
-echo -e "${MAGENTA}  ╚══════════════════════════════════════════════════════════════╝${NC}"
-
-prompt_var "DEFAULT_RAM_GB"    "Default RAM per VPS (GB)"                  normal   ""       "is_number"
-prompt_var "DEFAULT_CPU"       "Default CPU cores per VPS"                 normal   ""       "is_number"
-prompt_var "DEFAULT_DISK_GB"   "Default disk size per VPS (GB)"            normal   ""       "is_number"
-prompt_var "MAX_VPS_PER_USER"  "Max VPS instances per user"                normal   ""       "is_number"
-
-echo ""
-echo -e "${MAGENTA}  ╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${MAGENTA}  ║${CYAN}   🌐   WEBSSH / WEB PANEL${NC}"
-echo -e "${MAGENTA}  ╚══════════════════════════════════════════════════════════════╝${NC}"
-
-prompt_var "WEB_PORT"    "WebSSH port (e.g. 8080)"                         normal   ""       "is_number"
-prompt_var "WEBSSH_URL"  "Public WebSSH URL (http://IP:PORT)"              normal   ""       "is_url"
-
-# ───────── Show sanitized result ─────────
-echo ""
-success "All .env variables configured"
-echo -e "${BLUE}  ─────────────────────────────────────────────────────────────${NC}"
-echo -e "${WHITE}  📄  Current .env (secrets hidden):${NC}"
-while IFS='=' read -r k v; do
-    [[ -z "$k" || "$k" =~ ^# ]] && continue
-    k=$(echo "$k" | xargs)   # trim
-    if [[ "$k" =~ (TOKEN|KEY|SECRET|PASSWORD) ]]; then
-        echo -e "     ${GREEN}${k}${NC}=${YELLOW}$(printf '%*s' ${#v} '' | tr ' ' '*')${NC}"
-    else
-        echo -e "     ${GREEN}${k}${NC}=${YELLOW}${v}${NC}"
-    fi
-done < "$ENV_FILE"
-echo -e "${BLUE}  ─────────────────────────────────────────────────────────────${NC}"
-
-# ═══════════════════════════════════════════════════════════════════
-#                   STEP 5 : SYSTEMD SERVICE
-# ═══════════════════════════════════════════════════════════════════
-section "STEP 5/6  •  Creating systemd Service"
-
-# Auto-detect bot entry file
-BOT_FILE=""
-for candidate in /root/Vps-Deployer-bot/bot.py /root/Vps-Deployer-bot/main.py /root/bot.py; do
-    if [[ -f "$candidate" ]]; then BOT_FILE="$candidate"; break; fi
-done
-if [[ -z "$BOT_FILE" ]]; then
-    warn "Could not auto-detect bot entry file — assuming /root/Vps-Deployer-bot/bot.py"
-    BOT_FILE="/root/Vps-Deployer-bot/bot.py"
+BOT_PATH="$(pwd)/bot.py"
+if [[ ! -f "$BOT_PATH" ]]; then
+    err "bot.py not found at ${BOT_PATH}"
+    exit 1
 fi
 
 cat > /etc/systemd/system/rfrs-bot.service << EOF
-# ────────────────────────────────────────────────
-#  RFRS LXC BOT 1.0 PRO  •  Made by ROOTFAHIM
+# ─────────────────────────────────────────────
+#  RFRS LXC BOT 1.0 PRO — systemd unit
 #  Watermark: ROOTFAHIM
-# ────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 [Unit]
-Description=RFRS LXC BOT 1.0 PRO  [ROOTFAHIM]
+Description=RFRS LXC BOT 1.0 PRO
 After=network.target snap.lxd.daemon.service
-Wants=network-online.target
 
 [Service]
-Type=simple
 User=root
-WorkingDirectory=/root/Vps-Deployer-bot
-ExecStart=/usr/bin/python3 ${BOT_FILE}
+WorkingDirectory=$(pwd)
+ExecStart=/usr/bin/python3 $(pwd)/bot.py
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
-EnvironmentFile=/root/Vps-Deployer-bot/.env
-StandardOutput=journal
-StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-success "Service file created: /etc/systemd/system/rfrs-bot.service"
-info "WorkingDirectory : /root/Vps-Deployer-bot"
-info "ExecStart        : /usr/bin/python3 ${BOT_FILE}"
+ok "Service file written: /etc/systemd/system/rfrs-bot.service"
 
-run_with_spinner "Reloading systemd daemon" systemctl daemon-reload
-run_with_spinner "Enabling rfrs-bot service" systemctl enable rfrs-bot
-run_with_spinner "Starting rfrs-bot service" systemctl start rfrs-bot
+# ---------- STEP 7: ENABLE & START ----------
+step "STEP 7/8 : Enabling & starting service"
 
-# ═══════════════════════════════════════════════════════════════════
-#                   STEP 6 : VERIFY & COMPLETE
-# ═══════════════════════════════════════════════════════════════════
-section "STEP 6/6  •  Service Status"
+(systemctl daemon-reload) &
+spinner $! "systemctl daemon-reload"
+
+(systemctl enable rfrs-bot >/dev/null 2>&1) &
+spinner $! "systemctl enable rfrs-bot"
+
+(systemctl restart rfrs-bot >/dev/null 2>&1) &
+spinner $! "systemctl start rfrs-bot"
 
 sleep 2
-systemctl --no-pager --full status rfrs-bot || true
 
-echo ""
-echo -e "${GREEN}${NC}"
-cat << 'EOF'
-   ██████╗  ██████╗  ██████╗ ████████╗███████╗ █████╗ ██╗  ██╗██╗███╗   ███╗
-   ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝██╔════╝██╔══██╗██║  ██║██║████╗ ████║
-   ██████╔╝██║   ██║██║   ██║   ██║   █████╗  ███████║███████║██║██╔████╔██║
-   ██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  ██╔══██║██╔══██║██║██║╚██╔╝██║
-   ██║  ██║╚██████╔╝╚██████╔╝   ██║   ██║     ██║  ██║██║  ██║██║██║ ╚═╝ ██║
-   ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝     ╚═╝
+# ---------- STEP 8: VERIFY ----------
+step "STEP 8/8 : Verifying service"
+
+if systemctl is-active --quiet rfrs-bot; then
+    ok "rfrs-bot is RUNNING"
+else
+    err "rfrs-bot failed to start — showing logs:"
+    journalctl -u rfrs-bot --no-pager -n 25 || true
+    exit 1
+fi
+
+# ---------- FINAL ----------
+progress_bar "Finalizing installation..."
+
+echo
+echo -e "${GREEN}${BOLD}"
+cat << "EOF"
+  ╔═══════════════════════════════════════════════════════╗
+  ║                                                       ║
+  ║     ✔ INSTALLATION COMPLETE — RFRS BOT IS LIVE! ✔     ║
+  ║                                                       ║
+  ╚═══════════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
-echo -e "${GREEN}  ╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}  ║  🎉  INSTALLATION COMPLETE — RFRS LXC BOT IS LIVE!  🎉        ║${NC}"
-echo -e "${GREEN}  ╚══════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-echo -e "${CYAN}  📌  Useful commands:${NC}"
-echo -e "${WHITE}     • Status  : ${YELLOW}systemctl status rfrs-bot${NC}"
-echo -e "${WHITE}     • Logs    : ${YELLOW}journalctl -u rfrs-bot -f${NC}"
-echo -e "${WHITE}     • Restart : ${YELLOW}systemctl restart rfrs-bot${NC}"
-echo -e "${WHITE}     • Stop    : ${YELLOW}systemctl stop rfrs-bot${NC}"
-echo -e "${WHITE}     • Edit env: ${YELLOW}nano /root/Vps-Deployer-bot/.env${NC}"
-echo ""
-echo -e "${MAGENTA}  ═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}         👑  WATERMARK: ROOTFAHIM  |  GITHUB: RootFahim  👑${NC}"
-echo -e "${MAGENTA}  ═══════════════════════════════════════════════════════════════${NC}"
-echo ""
+
+echo -e "${WM} ${BOLD}Service status:${NC}"
+echo -e "${DIM}───────────────────────────────────────────────${NC}"
+systemctl status rfrs-bot --no-pager -l | head -n 15 || true
+echo -e "${DIM}───────────────────────────────────────────────${NC}"
+
+echo
+echo -e "${WM} ${BOLD}Useful commands:${NC}"
+echo -e "  ${CYAN}systemctl status rfrs-bot${NC}    ${DIM}# status${NC}"
+echo -e "  ${CYAN}systemctl restart rfrs-bot${NC}   ${DIM}# restart${NC}"
+echo -e "  ${CYAN}systemctl stop rfrs-bot${NC}      ${DIM}# stop${NC}"
+echo -e "  ${CYAN}journalctl -u rfrs-bot -f${NC}    ${DIM}# live logs${NC}"
+echo -e "  ${CYAN}nano $(pwd)/.env${NC}             ${DIM}# edit config${NC}"
+
+echo
+echo -e "${MAGENTA}${BOLD}          ⚡ Powered by ROOTFAHIM ⚡${NC}"
+echo -e "${MAGENTA}${BOLD}   github.com/RootFahim/Vps-Deployer-bot${NC}"
+echo
+
+exit 0
