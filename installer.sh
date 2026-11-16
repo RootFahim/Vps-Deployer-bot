@@ -23,7 +23,7 @@ NC='\033[0m'
 
 # ───────────── Root Check ─────────────
 if [[ $EUID -ne 0 ]]; then
-    echo -e "${RED}❌ Ye script root ke tor par chalana zaruri hai!${NC}"
+    echo -e "${RED}❌ This script must be run as root!${NC}"
     echo -e "${YELLOW}Try: sudo bash installer.sh${NC}"
     exit 1
 fi
